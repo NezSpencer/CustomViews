@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">CustomViews</string>
     <string name="last_name">Last name</string>
+    <string name="dial_settings" translatable="false">dial settings</string>
 </resources>

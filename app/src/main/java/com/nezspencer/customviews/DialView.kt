@@ -9,10 +9,22 @@ import android.view.View
 
 class DialView : View{
     constructor(context: Context?) : super(context)
-    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs)
-    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int) : super(context, attrs, defStyleAttr)
+    constructor(context: Context?, attrs: AttributeSet?) : super(context, attrs){
+        val typedArray = context!!.obtainStyledAttributes(attrs, R.styleable.DialView, 0, 0)
+        fanOffColor = typedArray.getColor(R.styleable.DialView_fanOffColor, fanOffColor)
+        fanOnColor = typedArray.getColor(R.styleable.DialView_fanOnColor, fanOnColor)
+        mSelectionCount = typedArray.getInt(R.styleable.DialView_selection_count, mSelectionCount)
+        typedArray.recycle()
+    }
+    constructor(context: Context?, attrs: AttributeSet?, defStyleAttr: Int)
+            : super(context, attrs, defStyleAttr) {
+        val typedArray = context!!.obtainStyledAttributes(attrs, R.styleable.DialView, 0, 0)
+        fanOffColor = typedArray.getColor(R.styleable.DialView_fanOffColor, fanOffColor)
+        fanOnColor = typedArray.getColor(R.styleable.DialView_fanOnColor, fanOnColor)
+        mSelectionCount = typedArray.getInt(R.styleable.DialView_selection_count, mSelectionCount)
+        typedArray.recycle()
+    }
 
-    private val SELECTION_COUNT : Int = 4
     private var mWidth : Float = 0f
     private var mHeight : Float = 0f
     private lateinit var mTextPaint: Paint
@@ -21,6 +33,9 @@ class DialView : View{
     private var mActiveSelection : Int = 0
     private var mTempLabel : StringBuffer = StringBuffer(8)
     private var mTempResult = Array(2){0f}
+    private var fanOnColor = Color.parseColor("#22FFFF")
+    private var fanOffColor = Color.parseColor("#8888AA")
+    private var mSelectionCount = 4
     init {
         init()
     }
@@ -31,16 +46,16 @@ class DialView : View{
         mTextPaint.textAlign = Paint.Align.CENTER
         mTextPaint.textSize = 40f
         mDialPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        mDialPaint.color = Color.GRAY
+        mDialPaint.color = fanOffColor
 
         setOnClickListener {
-            mActiveSelection = (mActiveSelection + 1) % SELECTION_COUNT
+            mActiveSelection = (mActiveSelection + 1) % mSelectionCount
 
             if (mActiveSelection >= 1){
-                mDialPaint.color = Color.GREEN
+                mDialPaint.color = fanOnColor
             }
             else{
-                mDialPaint.color = Color.GRAY
+                mDialPaint.color = fanOffColor
             }
 
             invalidate()
@@ -55,13 +70,27 @@ class DialView : View{
 
     }
 
-    private fun computeXYForPosition(pos : Int, radius : Float): Array<Float> {
+    private fun computeXYForPosition(pos : Int, radius : Float, isLabel : Boolean): Array<Float> {
         val result = mTempResult
-        val startAngle = Math.PI * (9 / 8)
-        val angle = startAngle + (pos * (Math.PI / 4))
+        val startAngle : Double
+        val angle : Double
 
-        result[0] = ((radius * Math.cos(angle)) + (mWidth / 2)).toFloat()
-        result[1] = ((radius * Math.sin(angle)) + (mHeight / 2)).toFloat()
+        if (mSelectionCount > 4) {
+            startAngle = Math.PI * (3 / 2)
+            angle = startAngle + (pos * (Math.PI / mSelectionCount))
+            result[0] = (radius * Math.cos(angle * 2) + (mWidth / 2)).toFloat()
+            result[1] = (radius * Math.sin(angle * 2) + (mHeight / 2)).toFloat()
+            if((angle > Math.toRadians(360.0)) && isLabel) {
+                result[1] = result[1] + 20
+            }
+        }
+        else{
+            startAngle = Math.PI * (9/ 8)
+            angle = startAngle + (pos * (Math.PI / mSelectionCount))
+            result[0] = ((radius * Math.cos(angle)) + (mWidth / 2)).toFloat()
+            result[1] = ((radius * Math.sin(angle)) + (mHeight / 2)).toFloat()
+        }
+
         return result
     }
 
@@ -72,16 +101,23 @@ class DialView : View{
             val labelRadius = mRadius + 20
             val label = mTempLabel
 
-            for (i in 0 until SELECTION_COUNT){
-                val xyData = computeXYForPosition(i, labelRadius)
+            for (i in 0 until mSelectionCount){
+                val xyData = computeXYForPosition(i, labelRadius, true)
                 label.setLength(0)
                 label.append(i)
                 it.drawText(label, 0, label.length, xyData[0], xyData[1], mTextPaint)
             }
 
             val markerRadius = mRadius - 35
-            val xyData = computeXYForPosition(mActiveSelection, markerRadius)
+            val xyData = computeXYForPosition(mActiveSelection, markerRadius, false)
             it.drawCircle(xyData[0], xyData[1], 20f, mTextPaint)
         }
+    }
+
+    fun setSelectionCount(selection : Int){
+        mSelectionCount = selection
+        mActiveSelection = 0
+        mDialPaint.color = fanOffColor
+        invalidate()
     }
 }
